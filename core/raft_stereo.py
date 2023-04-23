@@ -83,8 +83,12 @@ class RAFTStereo(nn.Module):
                 fmap1, fmap2 = self.fnet([image1, image2])
             net_list = [torch.tanh(x[0]) for x in cnet_list]
             inp_list = [torch.relu(x[1]) for x in cnet_list]
-
+            # net_list[0].shape = [4, 128, 80, 180]    net_list[1].shape = [4, 128, 40, 90]
+            
+            
             # Rather than running the GRU's conv layers on the context features multiple times, we do it once at the beginning 
+            #我们不是在上下文特征上多次运行 GRU 的卷积层，而是在开始时运行一次 inp_list 是三个列表组成的列表
+            #inp_list[0][0].shape = [4, 128, 80, 180]   inp_list[1][0].shape = [4, 128, 40, 90]
             inp_list = [list(conv(i).split(split_size=conv.out_channels//3, dim=1)) for i,conv in zip(inp_list, self.context_zqr_convs)]
 
         if self.args.corr_implementation == "reg": # Default

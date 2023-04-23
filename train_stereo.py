@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from core.raft_stereo import RAFTStereo
+from core.raft_stereo_query import RAFTStereo
 
 from evaluate_stereo import *
 import core.stereo_datasets as datasets
@@ -74,7 +74,7 @@ def fetch_optimizer(args, model):
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wdecay, eps=1e-8)
 
     scheduler = optim.lr_scheduler.OneCycleLR(optimizer, args.lr, args.num_steps+100,
-            pct_start=0.01, cycle_momentum=False, anneal_strategy='linear')
+            pct_start=0.3, cycle_momentum=False, anneal_strategy='linear')
 
     return optimizer, scheduler
 
@@ -83,13 +83,16 @@ class Logger:
 
     SUM_FREQ = 100
 
+    
     def __init__(self, model, scheduler):
         self.model = model
         self.scheduler = scheduler
         self.total_steps = 0
         self.running_loss = {}
-        self.writer = SummaryWriter(log_dir='runs')
-
+        
+        self.log_dir = "runs_second"
+        
+        self.writer = SummaryWriter(log_dir=self.log_dir)
     def _print_training_status(self):
         metrics_data = [self.running_loss[k]/Logger.SUM_FREQ for k in sorted(self.running_loss.keys())]
         training_str = "[{:6d}, {:10.7f}] ".format(self.total_steps+1, self.scheduler.get_last_lr()[0])
@@ -99,7 +102,7 @@ class Logger:
         logging.info(f"Training Metrics ({self.total_steps}): {training_str + metrics_str}")
 
         if self.writer is None:
-            self.writer = SummaryWriter(log_dir='runs')
+            self.writer = SummaryWriter(log_dir=self.log_dir)
 
         for k in self.running_loss:
             self.writer.add_scalar(k, self.running_loss[k]/Logger.SUM_FREQ, self.total_steps)
@@ -120,7 +123,7 @@ class Logger:
 
     def write_dict(self, results):
         if self.writer is None:
-            self.writer = SummaryWriter(log_dir='runs')
+            self.writer = SummaryWriter(log_dir=self.log_dir)
 
         for key in results:
             self.writer.add_scalar(key, results[key], self.total_steps)
@@ -224,7 +227,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_steps', type=int, default=100000, help="length of training schedule.")
     parser.add_argument('--image_size', type=int, nargs='+', default=[320, 720], help="size of the random image crops used during training.")
     parser.add_argument('--train_iters', type=int, default=16, help="number of updates to the disparity field in each forward pass.")
-    parser.add_argument('--wdecay', type=float, default=.00001, help="Weight decay in optimizer.")
+    parser.add_argument('--wdecay', type=float, default=.00002, help="Weight decay in optimizer.")
 
     # Validation parameters
     parser.add_argument('--valid_iters', type=int, default=32, help='number of flow-field updates during validation forward pass')
@@ -233,7 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--corr_implementation', choices=["reg", "alt", "reg_cuda", "alt_cuda"], default="reg", help="correlation volume implementation")
     parser.add_argument('--shared_backbone', action='store_true', help="use a single backbone for the context and feature encoders")
     parser.add_argument('--corr_levels', type=int, default=4, help="number of levels in the correlation pyramid")
-    parser.add_argument('--corr_radius', type=int, default=4, help="width of the correlation pyramid")
+    parser.add_argument('--corr_radius', type=int, default=7, help="width of the correlation pyramid")
     parser.add_argument('--n_downsample', type=int, default=2, help="resolution of the disparity field (1/2^K)")
     parser.add_argument('--context_norm', type=str, default="batch", choices=['group', 'batch', 'instance', 'none'], help="normalization of context encoder")
     parser.add_argument('--slow_fast_gru', action='store_true', help="iterate the low-res GRUs more frequently")

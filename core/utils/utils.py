@@ -81,7 +81,7 @@ def coords_grid(batch, ht, wd):
 
 
 def upflow8(flow, mode='bilinear'):
-    new_size = (8 * flow.shape[2], 8 * flow.shape[3])
+    new_size = (4 * flow.shape[2], 4 * flow.shape[3])
     return  8 * F.interpolate(flow, size=new_size, mode=mode, align_corners=True)
 
 def gauss_blur(input, N=5, std=1):
